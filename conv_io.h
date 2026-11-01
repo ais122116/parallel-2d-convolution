@@ -1,17 +1,3 @@
-// conv_io.h - shared tensor file format + layout (usable from .cpp and .cu)
-//
-// FILE FORMAT (binary, little-endian):
-//   int32  ndim
-//   int32  dims[ndim]
-//   float32 data[prod(dims)]      (row-major, last dim fastest)
-//
-// LAYOUTS:
-//   input   : ndim=3, dims = {C, M, N}       in [(c*M + i)*N + j]
-//   filters : ndim=4, dims = {K, C, W, W}    f  [((k*C + c)*W + u)*W + v]
-//   output  : ndim=3, dims = {K, M, N}       out[(k*M + i)*N + j]
-//
-// Channel-major (CHW) is used so that, on the GPU, neighbouring threads
-// (neighbouring j) read neighbouring addresses -> coalesced accesses.
 #pragma once
 #include <cstdio>
 #include <cstdlib>
