@@ -1,5 +1,6 @@
 #include "conv_io.h"
 #include <cuda_runtime.h>
+#include <chrono>
 #include <cstring>
 
 #define CUDA_CHECK(call)                                                          \
@@ -65,11 +66,15 @@ int main(int argc, char** argv)
 
     cudaDeviceProp prop;
     CUDA_CHECK(cudaGetDeviceProperties(&prop, 0));
+    CUDA_CHECK(cudaFree(0));   // start the GPU context here, so its one-time setup is not counted as malloc time
 
     float *d_in, *d_f, *d_out;
+    auto tm0 = std::chrono::high_resolution_clock::now();
     CUDA_CHECK(cudaMalloc(&d_in, in_bytes));
     CUDA_CHECK(cudaMalloc(&d_f, f_bytes));
     CUDA_CHECK(cudaMalloc(&d_out, out_bytes));
+    auto tm1 = std::chrono::high_resolution_clock::now();
+    const double malloc_ms = std::chrono::duration<double, std::milli>(tm1 - tm0).count();
 
     cudaEvent_t e0, e1;
     CUDA_CHECK(cudaEventCreate(&e0));
@@ -123,6 +128,8 @@ int main(int argc, char** argv)
     printf("M=%d N=%d C=%d K=%d W=%d impl=gpu_naive block=%dx%d gpu=\"%s\"\n",
            M, N, C, K, W, B, B, prop.name);
     printf("copy_ms: h2d %.3f  d2h %.3f   kernel GFLOP/s: %.1f\n", h2d_ms, d2h_ms, gflops);
+    printf("total_ms: %.3f  (malloc %.3f + h2d %.3f + kernel %.3f + d2h %.3f)\n",
+           malloc_ms + h2d_ms + kern_ms + d2h_ms, malloc_ms, h2d_ms, kern_ms, d2h_ms);
     printf("time_ms: %.3f\n", kern_ms);   // kernel only - test scripts parse this line
     return 0;
 }

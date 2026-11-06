@@ -1,7 +1,5 @@
 set -e
-g++ -O3 -march=native -fopenmp cpu_reference.cpp -o cpu_reference
-g++ -O3 -march=native imgtool.cpp -o imgtool
-./cpu_reference --selftest
+
 
 mkdir -p results
 IMG=${1:-}

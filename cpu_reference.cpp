@@ -208,6 +208,7 @@ int main(int argc, char** argv)
         return 1;
     }
     bool naive = argc == 5 && strcmp(argv[4], "naive") == 0;
+    bool both = argc == 5 && strcmp(argv[4], "both") == 0;   // time naive AND fast in one run
 
     Tensor in, f;
     if (!read_tensor(argv[1], in) || !read_tensor(argv[2], f)) return 1;
@@ -217,6 +218,15 @@ int main(int argc, char** argv)
     Tensor out;
     out.dims = {K, M, N};
     out.data.resize(out.count());
+
+    double naive_ms = 0.0;
+    if (both) {   // plain serial version (conv2d_cpu), into its own output buffer
+        std::vector<float> out_naive(out.count());
+        auto n0 = std::chrono::high_resolution_clock::now();
+        conv2d_cpu(in.data.data(), f.data.data(), out_naive.data(), M, N, C, K, W);
+        auto n1 = std::chrono::high_resolution_clock::now();
+        naive_ms = std::chrono::duration<double, std::milli>(n1 - n0).count();
+    }
 
     ConvFn conv = naive ? conv2d_cpu : conv2d_cpu_fast;
     auto t0 = std::chrono::high_resolution_clock::now();
@@ -230,6 +240,8 @@ int main(int argc, char** argv)
     if (!naive) threads = omp_get_max_threads();
 #endif
     printf("M=%d N=%d C=%d K=%d W=%d impl=%s threads=%d\n", M, N, C, K, W, naive ? "naive" : "fast", threads);
+    if (both)
+        printf("naive_ms: %.3f  fast_ms: %.3f  (fast is %.1fx faster)\n", naive_ms, ms, naive_ms / ms);
     printf("time_ms: %.3f\n", ms);   // harness parses this line
     return 0;
 }
